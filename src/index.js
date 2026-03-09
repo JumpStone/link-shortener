@@ -6,14 +6,22 @@ var index_default = {
         const firstPart = pathParts[0];
         const INDEX_KEY = "__dashboard_index__";
 
+        const toSafeKey = (value) => typeof value === "string" ? value.trim() : "";
+
         const normalizeIndex = (raw) => ({
-            links: Array.isArray(raw?.links) ? [...new Set(raw.links.filter(Boolean))] : [],
-            pastes: Array.isArray(raw?.pastes) ? [...new Set(raw.pastes.filter(Boolean))] : []
+            links: Array.isArray(raw?.links) ? [...new Set(raw.links.map(toSafeKey).filter(Boolean))] : [],
+            pastes: Array.isArray(raw?.pastes) ? [...new Set(raw.pastes.map(toSafeKey).filter(Boolean))] : []
         });
 
         const getIndex = async () => {
-            const raw = await env.SHORTENER_DB.get(INDEX_KEY, { type: "json", cacheTtl: 0 });
-            return normalizeIndex(raw);
+            try {
+                const raw = await env.SHORTENER_DB.get(INDEX_KEY, { type: "json", cacheTtl: 0 });
+                return normalizeIndex(raw);
+            } catch (error) {
+                // Fallback for corrupted index JSON to avoid crashing admin actions.
+                console.error("Failed to parse dashboard index, rebuilding", error);
+                return rebuildIndexFromList();
+            }
         };
 
         const putIndex = async (index) => {
@@ -52,26 +60,28 @@ var index_default = {
                 for (const linkKey of index.links) {
                     const val = await env.SHORTENER_DB.get(linkKey, { cacheTtl: 0 });
                     if (!val) continue;
+                    const linkKeyEncoded = encodeURIComponent(linkKey);
                     linkRows += `
                         <div class="item-row">
                             <div style="min-width: 0; flex: 1;">
                                 <div class="item-link">grueneeule.de/${linkKey}</div>
                                 <div class="item-val">${val}</div>
                             </div>
-                            <a href="/del?key=${linkKey}" class="btn-del">Delete</a>
+                            <a href="/del?key=${linkKeyEncoded}" class="btn-del">Delete</a>
                         </div>`;
                 }
 
                 for (const pasteKey of index.pastes) {
                     const val = await env.SHORTENER_DB.get("paste:" + pasteKey, { cacheTtl: 0 });
-                    if (!val) continue;
+                    if (!val || typeof val !== "string") continue;
+                    const pasteKeyEncoded = encodeURIComponent(pasteKey);
                     pasteRows += `
                         <div class="item-row">
                             <div style="min-width: 0; flex: 1;">
                                 <div class="item-link">grueneeule.de/p/${pasteKey}</div>
                                 <div class="item-val">${val.substring(0, 50)}${val.length > 50 ? '...' : ''}</div>
                             </div>
-                            <a href="/delpaste?key=${pasteKey}" class="btn-del">Delete</a>
+                            <a href="/delpaste?key=${pasteKeyEncoded}" class="btn-del">Delete</a>
                         </div>`;
                 }
 
@@ -154,8 +164,8 @@ var index_default = {
             // Logic for adding/deleting
             if (action === "add") {
                 const p = url.searchParams;
-                const key = p.get("key");
-                const target = p.get("url");
+                const key = toSafeKey(p.get("key"));
+                const target = toSafeKey(p.get("url"));
                 if (key && target) {
                     await env.SHORTENER_DB.put(key, target);
                     const index = await getIndex();
@@ -167,7 +177,7 @@ var index_default = {
                 return Response.redirect(url.origin + (isLnkDomain ? "/" : "/admin"), 302);
             }
             if (action === "del") {
-                const k = url.searchParams.get("key");
+                const k = toSafeKey(url.searchParams.get("key"));
                 if (k) {
                     await env.SHORTENER_DB.delete(k);
                     const index = await getIndex();
@@ -178,8 +188,8 @@ var index_default = {
             }
             if (action === "addpaste") {
                 const formData = await request.formData();
-                const k = formData.get("key");
-                const c = formData.get("content");
+                const k = toSafeKey(formData.get("key"));
+                const c = typeof formData.get("content") === "string" ? formData.get("content") : "";
                 if (k && c) {
                     await env.SHORTENER_DB.put("paste:" + k, c);
                     const index = await getIndex();
@@ -191,7 +201,7 @@ var index_default = {
                 return Response.redirect(url.origin + (isLnkDomain ? "/" : "/admin"), 302);
             }
             if (action === "delpaste") {
-                const k = url.searchParams.get("key");
+                const k = toSafeKey(url.searchParams.get("key"));
                 if (k) {
                     await env.SHORTENER_DB.delete("paste:" + k);
                     const index = await getIndex();
