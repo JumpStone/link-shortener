@@ -145,11 +145,24 @@ var index_default = {
 
         // --- 2. PUBLIC VIEWS ---
 
+        // RAW PASTEBIN VIEW (grueneeule.de/p/raw/key)
+        if (firstPart === "p" && pathParts[1] === "raw" && pathParts[2]) {
+            const pasteContent = await env.SHORTENER_DB.get("paste:" + pathParts[2]);
+            if (pasteContent) {
+                return new Response(pasteContent, { headers: { "Content-Type": "text/plain;charset=UTF-8" } });
+            }
+        }
+
         // PASTEBIN VIEW (grueneeule.de/p/key)
         if (firstPart === "p" && pathParts[1]) {
-            const pasteContent = await env.SHORTENER_DB.get("paste:" + pathParts[1]);
+            const pasteKey = pathParts[1];
+            const pasteContent = await env.SHORTENER_DB.get("paste:" + pasteKey);
             if (pasteContent) {
-                return new Response(`<!DOCTYPE html><html><head><title>Paste | grueneeule.de</title><style>body{background:#000;color:#ccc;font-family:monospace;padding:40px;line-height:1.5;white-space:pre-wrap;word-break:break-all;} .meta{color:#0070f3;margin-bottom:20px;border-bottom:1px solid #313131;padding-bottom:10px;}</style></head><body><div class="meta">Paste: ${pathParts[1]}</div>${pasteContent.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</body></html>`, { headers: { "Content-Type": "text/html;charset=UTF-8" } });
+                const escapedKey = pasteKey.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+                const escapedContent = pasteContent.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+                const rawLink = `/p/raw/${encodeURIComponent(pasteKey)}`;
+
+                return new Response(`<!DOCTYPE html><html lang="en"><head><title>Paste | grueneeule.de</title><style>body{background:#000;color:#ccc;font-family:monospace;padding:40px;line-height:1.5;white-space:pre-wrap;word-break:break-all;} .meta{display:flex;justify-content:space-between;align-items:center;gap:12px;color:#0070f3;margin-bottom:20px;border-bottom:1px solid #313131;padding-bottom:10px;} .actions{display:flex;gap:8px;} .action-btn{background:#111;color:#ccc;border:1px solid #313131;padding:6px 10px;border-radius:4px;cursor:pointer;font-family:inherit;text-decoration:none;font-size:13px;} .action-btn:hover{border-color:#0070f3;color:#fff;} #paste-content{margin:0;}</style></head><body><div class="meta"><span>Paste: ${escapedKey}</span><div class="actions"><button id="copy-btn" class="action-btn" type="button">Copy text</button><a class="action-btn" href="${rawLink}">Raw</a></div></div><pre id="paste-content">${escapedContent}</pre><script>document.getElementById("copy-btn").addEventListener("click", async function(){const text = document.getElementById("paste-content").textContent || ""; try { await navigator.clipboard.writeText(text); this.textContent = "Copied"; setTimeout(() => this.textContent = "Copy text", 1200); } catch (e) { this.textContent = "Copy failed"; setTimeout(() => this.textContent = "Copy text", 1200); }});</script></body></html>`, { headers: { "Content-Type": "text/html;charset=UTF-8" } });
             }
         }
 

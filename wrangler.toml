@@ -14,11 +14,11 @@ id = "dde46514daa746a1819f3be22e9ea044"
 
 # Route for public short links on the main domain.
 [[routes]]
-pattern = "grueneeule.de/*"
+pattern = "grueneeule.de"
 # This route points to a domain managed as a custom domain.
 custom_domain = true
 
 # Separate admin/management route.
 [[routes]]
-pattern = "lnk.jumpow.de/*"
+pattern = "lnk.jumpow.de"
 custom_domain = true
