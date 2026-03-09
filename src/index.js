@@ -117,8 +117,43 @@ var index_default = {
         // Look up the short key in KV and redirect when a match exists.
         const targetURL = await env.SHORTENER_DB.get(key);
         if (targetURL) return Response.redirect(targetURL, 302);
-        // Return a simple HTML 404 page for unknown keys.
-        return new Response("<h1>404</h1><p>Link not found.</p>", { status: 404, headers: { "Content-Type": "text/html" } });
+        // Return a dashboard-styled HTML 404 page for unknown keys.
+        const html404 = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>404 | grueneeule.de</title>
+          <style>
+            body { font-family: "Inter", sans-serif; background: #000; color: #fff; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; }
+            .container { width: 100%; max-width: 620px; }
+            .card { background: #111; border: 1px solid #313131; border-radius: 12px; padding: 30px; }
+            .eyebrow { color: #0070f3; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 14px; }
+            h1 { margin: 0 0 10px; font-size: 32px; line-height: 1.2; }
+            p { margin: 0; color: #a0a0a0; font-size: 15px; line-height: 1.6; }
+            .key { margin-top: 18px; padding: 10px 12px; border-radius: 8px; border: 1px solid #313131; background: #0a0a0a; color: #d0d0d0; font-size: 13px; word-break: break-all; }
+            .actions { margin-top: 22px; display: flex; gap: 10px; flex-wrap: wrap; }
+            .btn { display: inline-block; text-decoration: none; border-radius: 6px; padding: 10px 14px; font-size: 13px; border: 1px solid #313131; }
+            .btn-primary { background: #0070f3; border-color: #0070f3; color: #fff; }
+            .btn-secondary { background: #1a1a1a; color: #cfcfcf; }
+          </style>
+        </head>
+        <body>
+          <main class="container">
+            <section class="card">
+              <div class="eyebrow">404 - Link not found</div>
+              <h1>This short link does not exist.</h1>
+              <p>The requested link was not found or may have been removed. Check the key or create it again in the dashboard.</p>
+              <div class="key">Requested key: /${key}</div>
+              <div class="actions">
+                <a class="btn btn-primary" href="https://grueneeule.de">Go to homepage</a>
+              </div>
+            </section>
+          </main>
+        </body>
+        </html>`;
+        return new Response(html404, { status: 404, headers: { "Content-Type": "text/html;charset=UTF-8" } });
     }
 };
 
