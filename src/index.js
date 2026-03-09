@@ -144,7 +144,7 @@ var index_default = {
             <section class="card">
               <div class="eyebrow">404 - Link not found</div>
               <h1>This short link does not exist.</h1>
-              <p>The requested link was not found or may have been removed. Check the key or create it again in the dashboard.</p>
+              <p>The requested link was not found or may have been removed.</p>
               <div class="key">Requested key: /${key}</div>
               <div class="actions">
                 <a class="btn btn-primary" href="https://grueneeule.de">Go to homepage</a>
