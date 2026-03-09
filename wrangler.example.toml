@@ -10,7 +10,7 @@ compatibility_date = "2024-01-01"
 # Variable name available inside the Worker code.
 binding = "SHORTENER_DB"
 # Replace this placeholder with the real KV namespace ID.
-id = "dde46514daa746a1819f3be22e9ea044"
+id = "YOUR_KV_ID_HERE"
 
 # Route for public short links on the main domain.
 [[routes]]

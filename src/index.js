@@ -65,12 +65,11 @@ var index_default = {
               .item-link { color: #0070f3; font-weight: 500; font-size: 14px; }
               .item-val { color: #999; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 350px; }
               .btn-del { color: #f04f4f; text-decoration: none; font-size: 12px; padding: 4px 8px; border: 1px solid #313131; border-radius: 4px; background: #222; }
-              .help-btn { position: absolute; top: 0; right: 0; background: #222; border: 1px solid #313131; color: #999; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+              .help-btn { background: #222; border: 1px solid #313131; color: #999; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-left: auto; margin-bottom: 10px; }
             </style>
           </head>
           <body>
             <div class="container">
-              <div class="help-btn" onclick="alert('Shortener: Simple redirects.\\nPastebin: Store text at /p/key')">?</div>
               <h1 style="font-size: 20px; font-weight: 500; margin-bottom: 24px;">grueneeule.de <span style="color: #666;">/ Dashboard</span></h1>
               
               <div class="tabs">
@@ -79,6 +78,7 @@ var index_default = {
               </div>
 
               <div id="tab-links" class="tab-content active">
+                <div class="help-btn" onclick="alert('/add: Erstellt einen neuen Shortlink (Key -> Ziel-URL).\\nBeispiel: /add?key=discord&url=https://discord.gg/deinserver\\n\\n/del: Loescht einen vorhandenen Shortlink per Key.\\nBeispiel: /del?key=discord')">?</div>
                 <div class="card">
                   <form action="/add" method="GET" style="display: flex; gap: 10px; align-items: flex-end;">
                     <div style="flex:1"><label style="font-size:12px;color:#999">Key</label><input type="text" name="key" required></div>
