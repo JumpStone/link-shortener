@@ -1,0 +1,24 @@
+# Worker name as it appears in Cloudflare.
+name = "eulen-shortener"
+# Entry file for the Worker runtime.
+main = "src/index.js"
+# Locks runtime behavior to this compatibility snapshot.
+compatibility_date = "2024-01-01"
+
+# KV namespace used for short-link storage.
+[[kv_namespaces]]
+# Variable name available inside the Worker code.
+binding = "SHORTENER_DB"
+# Replace this placeholder with the real KV namespace ID.
+id = "YOUR_KV_ID_HERE"
+
+# Route for public short links on the main domain.
+[[routes]]
+pattern = "grueneeule.de/*"
+# This route points to a domain managed as a custom domain.
+custom_domain = true
+
+# Separate admin/management route.
+[[routes]]
+pattern = "lnk.jumpow.de/*"
+custom_domain = true
