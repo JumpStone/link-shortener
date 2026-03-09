@@ -4,6 +4,33 @@ var index_default = {
         const host = request.headers.get("host");
         const pathParts = url.pathname.split("/").filter(p => p !== "");
         const firstPart = pathParts[0];
+        const INDEX_KEY = "__dashboard_index__";
+
+        const normalizeIndex = (raw) => ({
+            links: Array.isArray(raw?.links) ? [...new Set(raw.links.filter(Boolean))] : [],
+            pastes: Array.isArray(raw?.pastes) ? [...new Set(raw.pastes.filter(Boolean))] : []
+        });
+
+        const getIndex = async () => {
+            const raw = await env.SHORTENER_DB.get(INDEX_KEY, { type: "json", cacheTtl: 0 });
+            return normalizeIndex(raw);
+        };
+
+        const putIndex = async (index) => {
+            await env.SHORTENER_DB.put(INDEX_KEY, JSON.stringify(normalizeIndex(index)));
+        };
+
+        const rebuildIndexFromList = async () => {
+            const list = await env.SHORTENER_DB.list();
+            const rebuilt = { links: [], pastes: [] };
+            for (const item of list.keys) {
+                if (item.name === INDEX_KEY) continue;
+                if (item.name.startsWith("paste:")) rebuilt.pastes.push(item.name.replace("paste:", ""));
+                else rebuilt.links.push(item.name);
+            }
+            await putIndex(rebuilt);
+            return rebuilt;
+        };
 
         const isLnkDomain = host === "lnk.jumpow.de";
         const isAdminPath = ["admin", "add", "del", "addpaste", "delpaste"].includes(firstPart);
@@ -14,15 +41,31 @@ var index_default = {
             if (isLnkDomain && !isAdminPath) action = "admin";
 
             if (action === "admin") {
-                const list = await env.SHORTENER_DB.list();
+                let index = await getIndex();
+                if (!index.links.length && !index.pastes.length) {
+                    index = await rebuildIndexFromList();
+                }
+
                 let linkRows = "";
                 let pasteRows = "";
 
-                for (const item of list.keys) {
-                    const val = await env.SHORTENER_DB.get(item.name);
-                    if (item.name.startsWith("paste:")) {
-                        const pasteKey = item.name.replace("paste:", "");
-                        pasteRows += `
+                for (const linkKey of index.links) {
+                    const val = await env.SHORTENER_DB.get(linkKey, { cacheTtl: 0 });
+                    if (!val) continue;
+                    linkRows += `
+                        <div class="item-row">
+                            <div style="min-width: 0; flex: 1;">
+                                <div class="item-link">grueneeule.de/${linkKey}</div>
+                                <div class="item-val">${val}</div>
+                            </div>
+                            <a href="/del?key=${linkKey}" class="btn-del">Delete</a>
+                        </div>`;
+                }
+
+                for (const pasteKey of index.pastes) {
+                    const val = await env.SHORTENER_DB.get("paste:" + pasteKey, { cacheTtl: 0 });
+                    if (!val) continue;
+                    pasteRows += `
                         <div class="item-row">
                             <div style="min-width: 0; flex: 1;">
                                 <div class="item-link">grueneeule.de/p/${pasteKey}</div>
@@ -30,16 +73,6 @@ var index_default = {
                             </div>
                             <a href="/delpaste?key=${pasteKey}" class="btn-del">Delete</a>
                         </div>`;
-                    } else {
-                        linkRows += `
-                        <div class="item-row">
-                            <div style="min-width: 0; flex: 1;">
-                                <div class="item-link">grueneeule.de/${item.name}</div>
-                                <div class="item-val">${val}</div>
-                            </div>
-                            <a href="/del?key=${item.name}" class="btn-del">Delete</a>
-                        </div>`;
-                    }
                 }
 
                 return new Response(`
@@ -115,30 +148,56 @@ var index_default = {
               }
             </script>
           </body>
-          </html>`, { headers: { "Content-Type": "text/html;charset=UTF-8" } });
+          </html>`, { headers: { "Content-Type": "text/html;charset=UTF-8", "Cache-Control": "no-store, no-cache, must-revalidate" } });
             }
 
             // Logic for adding/deleting
             if (action === "add") {
                 const p = url.searchParams;
-                if (p.get("key") && p.get("url")) await env.SHORTENER_DB.put(p.get("key"), p.get("url"));
+                const key = p.get("key");
+                const target = p.get("url");
+                if (key && target) {
+                    await env.SHORTENER_DB.put(key, target);
+                    const index = await getIndex();
+                    if (!index.links.includes(key)) {
+                        index.links.push(key);
+                        await putIndex(index);
+                    }
+                }
                 return Response.redirect(url.origin + (isLnkDomain ? "/" : "/admin"), 302);
             }
             if (action === "del") {
                 const k = url.searchParams.get("key");
-                if (k) await env.SHORTENER_DB.delete(k);
+                if (k) {
+                    await env.SHORTENER_DB.delete(k);
+                    const index = await getIndex();
+                    index.links = index.links.filter(item => item !== k);
+                    await putIndex(index);
+                }
                 return Response.redirect(url.origin + (isLnkDomain ? "/" : "/admin"), 302);
             }
             if (action === "addpaste") {
                 const formData = await request.formData();
                 const k = formData.get("key");
                 const c = formData.get("content");
-                if (k && c) await env.SHORTENER_DB.put("paste:" + k, c);
+                if (k && c) {
+                    await env.SHORTENER_DB.put("paste:" + k, c);
+                    const index = await getIndex();
+                    if (!index.pastes.includes(k)) {
+                        index.pastes.push(k);
+                        await putIndex(index);
+                    }
+                }
                 return Response.redirect(url.origin + (isLnkDomain ? "/" : "/admin"), 302);
             }
             if (action === "delpaste") {
                 const k = url.searchParams.get("key");
-                if (k) await env.SHORTENER_DB.delete("paste:" + k);
+                if (k) {
+                    await env.SHORTENER_DB.delete("paste:" + k);
+                    const index = await getIndex();
+                    index.pastes = index.pastes.filter(item => item !== k);
+                    await putIndex(index);
+                }
                 return Response.redirect(url.origin + (isLnkDomain ? "/" : "/admin"), 302);
             }
         }
