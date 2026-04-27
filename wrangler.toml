@@ -1,5 +1,5 @@
 # Worker name as it appears in Cloudflare.
-name = "eulen-shortener"
+name = "akkucraft-link-shortener"
 # Entry file for the Worker runtime.
 main = "src/index.js"
 # Locks runtime behavior to this compatibility snapshot.
